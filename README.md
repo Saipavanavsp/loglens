@@ -96,7 +96,7 @@ over instead of retrying.
 Requirements: Python 3.12, Docker Desktop. No GPU needed (training runs on Colab).
 
 ```powershell
-git clone <this repo>; cd loglens
+git clone https://github.com/Saipavanavsp/loglens.git; cd loglens
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
 ./tasks.ps1 install                  # or: make install (WSL/Linux)
 copy .env.example .env               # set LOGLENS_API_KEYS; ANTHROPIC_API_KEY is optional
