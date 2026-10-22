@@ -1,0 +1,40 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Data and model artifacts (scripts are committed, data is not)
+data/raw/
+data/interim/
+data/processed/
+data/cache/
+!data/**/.gitkeep
+*.gguf
+*.safetensors
+*.bin
+outputs/
+adapters/
+mlruns/
+mlartifacts/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
