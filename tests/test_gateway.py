@@ -347,5 +347,6 @@ def test_requests_are_logged_to_database_and_flushed_on_shutdown(tmp_path):
     row = logged[0]
     assert row.provider == "claude" and row.fallback_reason == "invalid_json"
     assert row.valid_json is True  # final answer was valid
+    assert row.degraded is False
     assert row.redactions == 2 and row.cost_usd == pytest.approx(0.002)
     assert row.key_id != "test-key-123"  # only the hash is stored

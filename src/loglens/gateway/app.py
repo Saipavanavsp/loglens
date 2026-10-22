@@ -172,6 +172,11 @@ def create_app(deps: Deps | None = None) -> FastAPI:
             log.info("gateway stopped")
 
     app = FastAPI(title="LogLens gateway", version="0.1.0", lifespan=lifespan)
+    if get_settings().otel_endpoint:
+        # One server span per HTTP request; router spans (cache, provider calls) nest under it.
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+        FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz,readyz,metrics")
 
     def get_deps(request: Request) -> Deps:
         return request.app.state.deps
@@ -209,6 +214,7 @@ def create_app(deps: Deps | None = None) -> FastAPI:
                 fallback_reason=out.fallback_reason,
                 confidence=out.confidence,
                 valid_json=out.valid_json,
+                degraded=out.degraded,
                 severity=out.label.severity.value if out.label else None,
                 category=out.label.category.value if out.label else None,
                 redactions=out.redactions,

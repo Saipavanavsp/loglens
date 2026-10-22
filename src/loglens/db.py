@@ -39,6 +39,7 @@ class RequestLog(Base):
     fallback_reason: Mapped[str | None] = mapped_column(String(64))
     confidence: Mapped[float | None] = mapped_column(Float)
     valid_json: Mapped[bool] = mapped_column(Boolean, default=True)
+    degraded: Mapped[bool] = mapped_column(Boolean, default=False)
     severity: Mapped[str | None] = mapped_column(String(16))
     category: Mapped[str | None] = mapped_column(String(16))
     redactions: Mapped[int] = mapped_column(Integer, default=0)

@@ -1,0 +1,23 @@
+{
+  "model": "qwen2.5:1.5b-instruct",
+  "prompt": "triage:v1",
+  "machine": "Windows host, Ollama in Docker, CPU only, num_thread=8",
+  "date": "2026-10-22",
+  "n": 100,
+  "request_errors": 0,
+  "valid_json_rate": 1.0,
+  "markdown_fenced_rate": 0.98,
+  "latency_p50_ms": 2573.145849999946,
+  "latency_p95_ms": 3695.061085000316,
+  "output_tokens_mean": 82.82,
+  "confidence_p10": 0.4325034390091956,
+  "confidence_median": 0.640434526405146,
+  "share_below_0_7": 0.6,
+  "parse_errors": {},
+  "predicted_severity": {
+    "error": 22,
+    "critical": 19,
+    "info": 32,
+    "warning": 27
+  }
+}
