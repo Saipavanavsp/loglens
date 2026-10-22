@@ -36,7 +36,15 @@ def setup_logging(level: str = "INFO") -> None:
     root.handlers[:] = [handler]
     root.setLevel(level)
     # Library loggers that would otherwise log request bodies/URLs at INFO.
-    for noisy in ("httpx", "httpcore", "anthropic"):
+    # (anthropic 2.x and huggingface_hub 1.x log through "httpx2".)
+    for noisy in (
+        "httpx",
+        "httpx2",
+        "httpcore",
+        "anthropic",
+        "huggingface_hub",
+        "sentence_transformers",
+    ):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
