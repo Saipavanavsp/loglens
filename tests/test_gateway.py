@@ -99,6 +99,21 @@ def test_fallback_disabled_by_config():
     assert res["degraded"] is True and claude.calls == []
 
 
+def test_local_timeout_is_not_retried_but_connection_error_is():
+    cfg = make_cfg(retries={"attempts": 3, "base_delay_s": 0, "max_delay_s": 0})
+    slow = FakeProvider(default="sleep")
+    app, _ = build(local=slow, fallback=None, cfg=cfg, use_cache=False)
+    with TestClient(app) as c:
+        post(c, {"message": LINE})
+    assert len(slow.calls) == 1
+
+    flaky = FakeProvider(script=[ConnectionError("x"), ConnectionError("y")], default=good_local())
+    app, _ = build(local=flaky, fallback=None, cfg=cfg, use_cache=False)
+    with TestClient(app) as c:
+        res = post(c, {"message": LINE}).json()["results"][0]
+    assert len(flaky.calls) == 3 and res["provider"] == "local"
+
+
 def test_circuit_breaker_opens_after_repeated_failures():
     local = FakeProvider(default=ConnectionError("down"))
     claude = FakeProvider("claude", "claude-test", external=True, default=good_claude())
@@ -149,14 +164,26 @@ def test_exact_then_semantic_cache_hits():
     assert stats["exact_hit"] == 1 and stats["semantic_hit"] == 1 and stats["miss"] == 1
 
 
-def test_low_confidence_degraded_answers_are_not_cached():
+def test_degraded_answer_not_cached_when_fallback_failed():
+    local = FakeProvider(default=good_local(p=0.1))
+    claude = FakeProvider("claude", "claude-test", external=True, default=ConnectionError("x"))
+    app, _ = build(local=local, fallback=claude)
+    with TestClient(app) as c:
+        post(c, {"message": LINE})
+        res = post(c, {"message": LINE}).json()["results"][0]
+    assert res["cache"] == "miss"
+    assert len(local.calls) == 2  # retried, since the fallback may work next time
+
+
+def test_degraded_answer_cached_when_no_fallback_configured():
     local = FakeProvider(default=good_local(p=0.1))
     app, _ = build(local=local, fallback=None)
     with TestClient(app) as c:
         post(c, {"message": LINE})
         res = post(c, {"message": LINE}).json()["results"][0]
-    assert res["cache"] == "miss"
-    assert len(local.calls) == 2
+    assert res["cache"] == "exact"
+    assert res["degraded"] is True  # the flag survives the cache
+    assert len(local.calls) == 1
 
 
 # --- auth, rate limits, budgets ---------------------------------------------------
@@ -305,6 +332,27 @@ def test_unknown_model_404():
             headers=HEADERS,
         )
     assert r.status_code == 404
+
+
+def test_demo_page_only_when_configured(monkeypatch):
+    app, _ = build()
+    with TestClient(app) as c:
+        assert c.get("/").status_code == 404
+    monkeypatch.setenv("LOGLENS_DEMO_KEY", "public-demo-key")
+    app, _ = build()
+    with TestClient(app) as c:
+        r = c.get("/")
+    assert r.status_code == 200 and "public-demo-key" in r.text and "__DEMO_KEY__" not in r.text
+
+
+def test_shipped_gateway_configs_are_valid():
+    from pathlib import Path
+
+    from loglens.gateway.settings import load_gateway_config
+
+    for path in Path("configs").glob("gateway*.yaml"):
+        cfg = load_gateway_config(path)
+        assert cfg.models["stable"].ollama_tag
 
 
 def test_health_ready_metrics():

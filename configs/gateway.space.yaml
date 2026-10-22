@@ -1,0 +1,49 @@
+# Config for the public Hugging Face Space demo: local model only, no paid fallback,
+# tighter rate limits, smaller batches.
+prompt:
+  stable: v1
+  canary: v1
+
+models:
+  stable:
+    ollama_tag: loglens-demo      # created at startup from LOGLENS_SPACE_MODEL
+    registry_version: space
+  canary: null
+
+canary:
+  percent: 0
+
+routing:
+  confidence_method: logprobs
+  confidence_threshold: 0.70
+  fallback_enabled: false         # never spend API money from a public page
+
+timeouts:
+  local_s: 90.0                   # 2 shared vCPUs; the first request also loads the model
+  fallback_s: 30.0
+
+retries:
+  attempts: 1
+
+circuit_breaker:
+  failure_threshold: 5
+  reset_after_s: 30
+
+cache:
+  exact_ttl_s: 86400
+  semantic_enabled: true
+  semantic_threshold: 0.95
+  semantic_ttl_s: 21600
+  semantic_max_entries: 2000
+
+rate_limit:
+  capacity: 20
+  refill_per_s: 0.2               # ~12 lines per minute per key
+
+budget:
+  daily_tokens: 500000
+  daily_cost_usd: 0.0
+
+batch:
+  max_items: 10
+  concurrency: 1

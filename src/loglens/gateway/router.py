@@ -120,6 +120,10 @@ class TriageService:
         self, provider: Provider, breaker: CircuitBreaker, timeout_s: float, **kwargs
     ) -> Completion:
         r = self.cfg.retries
+        # A timeout from a self-hosted model usually means it is overloaded; retrying puts
+        # the same work back on the queue (seen in the load test). Only retry connection
+        # errors there. Remote APIs time out for transient reasons, so they retry both.
+        retry_on = (ConnectionError,) if not provider.external else (TimeoutError, ConnectionError)
         try:
             return await call_with_retries(
                 lambda: provider.complete(**kwargs),
@@ -127,6 +131,7 @@ class TriageService:
                 timeout_s=timeout_s,
                 base_delay_s=r.base_delay_s,
                 max_delay_s=r.max_delay_s,
+                retry_on=retry_on,
                 breaker=breaker,
             )
         finally:
@@ -174,6 +179,7 @@ class TriageService:
                     out.label = TriageLabel.model_validate(v["label"])
                     out.provider, out.model_version = v["provider"], v["model_version"]
                     out.confidence, out.cache = v.get("confidence"), hit.kind
+                    out.degraded = bool(v.get("degraded", False))
                     root.set_attribute("cache", hit.kind)
                     return out
 
@@ -246,6 +252,11 @@ class TriageService:
                 # Better a flagged low-confidence answer than none at all.
                 self._finish(out, local_label, provider.name, provider.model, local_conf)
                 out.degraded = True
+                # With no fallback configured (e.g. the public demo) this is the best answer
+                # this deployment can give, so cache it. If the fallback merely failed or
+                # the budget ran out, don't: a later request may get a better answer.
+                if not (self.cfg.routing.fallback_enabled and self.fallback is not None):
+                    await self._store(namespace, message, out, allow_degraded=True)
                 return out
             raise TriageUnavailableError(f"no provider could answer (reason: {reason})")
 
@@ -310,14 +321,17 @@ class TriageService:
         if out.cost_usd:
             self.metrics.cost.inc(out.cost_usd)
 
-    async def _store(self, namespace: str, message: str, out: TriageOutcome) -> None:
-        if self.cache is None or out.label is None or out.degraded:
+    async def _store(
+        self, namespace: str, message: str, out: TriageOutcome, allow_degraded: bool = False
+    ) -> None:
+        if self.cache is None or out.label is None or (out.degraded and not allow_degraded):
             return
         value = {
             "label": out.label.model_dump(mode="json"),
             "provider": out.provider,
             "model_version": out.model_version,
             "confidence": out.confidence,
+            "degraded": out.degraded,
         }
         # Semantic hits serve *other* lines, so scrub this line's PII from the text.
         scrubbed = out.label.model_copy(
@@ -327,4 +341,5 @@ class TriageService:
             }
         )
         semantic_value = {**value, "label": scrubbed.model_dump(mode="json")}
-        await self.cache.put(namespace, message, value, semantic_value)
+        with span(self.tracer, "cache.store"):
+            await self.cache.put(namespace, message, value, semantic_value)

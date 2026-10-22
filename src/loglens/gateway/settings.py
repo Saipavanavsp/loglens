@@ -1,5 +1,6 @@
 """Typed view of configs/gateway.yaml."""
 
+import os
 from pathlib import Path
 
 import yaml
@@ -78,6 +79,8 @@ class GatewayConfig(BaseModel):
         return float(self.canary.get("percent", 0)) if self.models.get("canary") else 0.0
 
 
-def load_gateway_config(path: Path = DEFAULT_PATH) -> GatewayConfig:
+def load_gateway_config(path: Path | None = None) -> GatewayConfig:
+    """Load the YAML config; LOGLENS_GATEWAY_CONFIG overrides the default path."""
+    path = path or Path(os.environ.get("LOGLENS_GATEWAY_CONFIG", DEFAULT_PATH))
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return GatewayConfig.model_validate(data)

@@ -1,3 +1,5 @@
+import pytest
+
 from loglens.config import Settings
 
 
@@ -11,6 +13,12 @@ def test_api_key_is_not_leaked_in_repr(monkeypatch):
 def test_api_key_set_parses_comma_list(monkeypatch):
     monkeypatch.setenv("LOGLENS_API_KEYS", "a, b,,c ")
     assert Settings(_env_file=None).api_key_set == {"a", "b", "c"}
+
+
+@pytest.mark.parametrize("value", ["", "  ", "sk-ant-REPLACE_ME"])
+def test_placeholder_or_empty_key_is_none(monkeypatch, value):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", value)
+    assert Settings(_env_file=None).anthropic_api_key is None
 
 
 def test_dry_run_defaults_to_true(monkeypatch):

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LogLens demo</title>
+<style>
+  :root {
+    --bg: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --line: #e1e0d9; --accent: #2a78d6;
+    --info: #2a78d6; --warning: #fab219; --error: #ec835a; --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --line: #2c2c2a; --accent: #3987e5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  p.sub { color: var(--ink-2); margin: 0 0 24px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  textarea { width: 100%; min-height: 110px; font: 13px/1.5 ui-monospace, Consolas, monospace;
+             background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  select, button { font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line);
+                   background: var(--surface); color: var(--ink); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .examples button { font-size: 13px; padding: 4px 10px; cursor: pointer; }
+  .result { margin-top: 16px; }
+  .result .item { border-top: 1px solid var(--line); padding: 12px 0; }
+  .line { font: 12px ui-monospace, Consolas, monospace; color: var(--ink-2); word-break: break-all; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); }
+  .sev::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+                 margin-right: 6px; background: var(--dot, var(--muted)); }
+  .meta { font-size: 12px; color: var(--muted); }
+  .err { color: var(--critical); }
+  footer { margin-top: 24px; font-size: 13px; color: var(--ink-2); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>LogLens</h1>
+  <p class="sub">Paste log lines (one per line). A fine-tuned 1.5B model running on CPU classifies severity and
+    category and explains the likely cause.</p>
+
+  <div class="card">
+    <textarea id="logs" spellcheck="false">Invalid user oracle from 203.0.113.7
+Out of Memory: Killed process 2592 (httpd).
+KERNEL INFO instruction cache parity error corrected</textarea>
+    <div class="row">
+      <label for="source" class="meta">Source</label>
+      <select id="source">
+        <option value="unknown">auto / unknown</option>
+        <option>linux</option><option>openssh</option><option>apache</option><option>bgl</option>
+      </select>
+      <button class="primary" id="go">Triage</button>
+      <span class="meta" id="status"></span>
+    </div>
+    <div class="row examples">
+      <span class="meta">Try:</span>
+      <button data-l="Failed password for invalid user admin from 198.51.100.23 port 52211 ssh2">ssh brute force</button>
+      <button data-l="EXT3-fs error (device sda3): ext3_find_entry: reading directory #2 offset 0">filesystem</button>
+      <button data-l="[error] mod_jk child workerEnv in error state 6">apache</button>
+      <button data-l="KERNEL FATAL data TLB error interrupt">kernel fault</button>
+    </div>
+  </div>
+
+  <div class="result card" id="out" hidden></div>
+
+  <footer>
+    Requests are rate limited. The first request after the Space wakes up takes longer while the model loads.
+    API: <code>POST /v1/triage</code>, docs at <a href="/docs">/docs</a>.
+  </footer>
+</main>
+<script>
+  const KEY = "__DEMO_KEY__";
+  const colors = { info: "var(--info)", warning: "var(--warning)", error: "var(--error)", critical: "var(--critical)" };
+  const $ = (id) => document.getElementById(id);
+
+  document.querySelectorAll(".examples button").forEach((b) =>
+    b.addEventListener("click", () => { $("logs").value = b.dataset.l; }));
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
+
+  $("go").addEventListener("click", async () => {
+    const lines = $("logs").value.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 10);
+    if (!lines.length) return;
+    const source = $("source").value;
+    $("go").disabled = true;
+    $("status").textContent = `Running ${lines.length} line(s)...`;
+    const t0 = performance.now();
+    try {
+      const resp = await fetch("/v1/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+        body: JSON.stringify({ logs: lines.map((message) => ({ message, source })) }),
+      });
+      const body = await resp.json();
+      if (!resp.ok) throw new Error(body.detail || `HTTP ${resp.status}`);
+      $("out").innerHTML = body.results.map((r, i) => r.error
+        ? `<div class="item"><div class="line">${esc(lines[i])}</div><div class="err">${esc(r.error)}</div></div>`
+        : `<div class="item">
+             <div class="line">${esc(lines[i])}</div>
+             <div class="badges">
+               <span class="badge sev" style="--dot:${colors[r.severity]}">${esc(r.severity)}</span>
+               <span class="badge">${esc(r.category)}</span>
+             </div>
+             <div><strong>Cause:</strong> ${esc(r.root_cause)}</div>
+             <div><strong>Action:</strong> ${esc(r.suggested_action)}</div>
+             <div class="meta">${esc(r.provider)} · ${esc(r.model_version)} · cache ${esc(r.cache)}
+               ${r.confidence != null ? " · confidence " + r.confidence.toFixed(2) : ""}
+               ${r.degraded ? " · low confidence (no fallback in this demo)" : ""}
+               · ${(r.latency_ms / 1000).toFixed(2)} s</div>
+           </div>`).join("");
+      $("out").hidden = false;
+      $("status").textContent = `Done in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+    } catch (e) {
+      $("out").innerHTML = `<div class="err">${esc(e.message)}</div>`;
+      $("out").hidden = false;
+      $("status").textContent = "";
+    } finally {
+      $("go").disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

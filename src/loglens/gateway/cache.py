@@ -14,6 +14,7 @@ is fine for a few thousand entries. At scale this becomes a Redis vector index
 (HNSW via the Redis query engine) or a dedicated vector store; see DESIGN.md.
 """
 
+import asyncio
 import hashlib
 import json
 import time
@@ -109,6 +110,15 @@ class TriageCache:
     def _ns(self, namespace: str) -> str:
         return f"{self.prefix}:{namespace}"
 
+    def _sem(self, ns: str) -> str:
+        # The embedding size is part of the key: vectors from a different embedder
+        # (e.g. after a fallback to HashingEmbedder) must never be compared.
+        return f"{ns}:sem{self.embedder.dim}"
+
+    async def _embed(self, text: str) -> np.ndarray:
+        # Model inference is CPU-bound; keep it off the event loop.
+        return await asyncio.to_thread(self.embedder.embed, text)
+
     async def get(self, namespace: str, message: str) -> CacheHit | None:
         ns = self._ns(namespace)
         raw = await self.r.get(f"{ns}:exact:{self._h(message)}")
@@ -124,24 +134,25 @@ class TriageCache:
         return None
 
     async def _semantic_get(self, ns: str, message: str) -> CacheHit | None:
-        ids = await self.r.zrevrange(f"{ns}:sem:ids", 0, self.max_entries - 1)
+        sem = self._sem(ns)
+        ids = await self.r.zrevrange(f"{sem}:ids", 0, self.max_entries - 1)
         if not ids:
             return None
         ids = [i.decode() if isinstance(i, bytes) else i for i in ids]
-        vecs = await self.r.mget([f"{ns}:sem:vec:{i}" for i in ids])
+        vecs = await self.r.mget([f"{sem}:vec:{i}" for i in ids])
         live = [(i, v) for i, v in zip(ids, vecs, strict=True) if v is not None]
         expired = [i for i, v in zip(ids, vecs, strict=True) if v is None]
         if expired:
-            await self.r.zrem(f"{ns}:sem:ids", *expired)
+            await self.r.zrem(f"{sem}:ids", *expired)
         if not live:
             return None
-        query = self.embedder.embed(mask(message))
+        query = await self._embed(mask(message))
         matrix = np.stack([np.frombuffer(v, dtype=np.float32) for _, v in live])
         sims = matrix @ query
         best = int(np.argmax(sims))
         if float(sims[best]) < self.threshold:
             return None
-        raw = await self.r.get(f"{ns}:sem:val:{live[best][0]}")
+        raw = await self.r.get(f"{sem}:val:{live[best][0]}")
         if raw is None:
             return None
         return CacheHit(json.loads(raw), "semantic", float(sims[best]))
@@ -161,15 +172,16 @@ class TriageCache:
             return
         masked = mask(message)
         entry_id = self._h(masked)[:20]
-        vec = self.embedder.embed(masked).astype(np.float32).tobytes()
+        vec = (await self._embed(masked)).astype(np.float32).tobytes()
+        sem = self._sem(ns)
         pipe = self.r.pipeline()
-        pipe.set(f"{ns}:sem:vec:{entry_id}", vec, ex=self.semantic_ttl_s)
+        pipe.set(f"{sem}:vec:{entry_id}", vec, ex=self.semantic_ttl_s)
         pipe.set(
-            f"{ns}:sem:val:{entry_id}", json.dumps(semantic_value or value), ex=self.semantic_ttl_s
+            f"{sem}:val:{entry_id}", json.dumps(semantic_value or value), ex=self.semantic_ttl_s
         )
-        pipe.zadd(f"{ns}:sem:ids", {entry_id: time.time()})
+        pipe.zadd(f"{sem}:ids", {entry_id: time.time()})
         # Keep only the newest entries in the index.
-        pipe.zremrangebyrank(f"{ns}:sem:ids", 0, -self.max_entries - 1)
+        pipe.zremrangebyrank(f"{sem}:ids", 0, -self.max_entries - 1)
         await pipe.execute()
 
     async def stats(self) -> dict[str, float]:

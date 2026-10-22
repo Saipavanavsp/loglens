@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+.env.*
+data
+reports
+mlruns
+outputs
+**/__pycache__
+**/*.gguf
+**/*.safetensors
+learning/mini_transformer/input.txt
+.pytest_cache
+.ruff_cache

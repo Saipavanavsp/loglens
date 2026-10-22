@@ -5,7 +5,7 @@ Secrets are typed as SecretStr so they never show up in repr() or logs by accide
 
 from functools import lru_cache
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,15 @@ class Settings(BaseSettings):
 
     mlflow_tracking_uri: str = Field(default="http://localhost:5000", alias="MLFLOW_TRACKING_URI")
     otel_endpoint: str | None = Field(default=None, alias="OTEL_EXPORTER_OTLP_ENDPOINT")
+
+    @field_validator("anthropic_api_key", mode="before")
+    @classmethod
+    def _empty_key_is_none(cls, v):
+        """Treat an empty value or the .env.example placeholder as 'no key'."""
+        if v is None:
+            return None
+        raw = v.get_secret_value() if isinstance(v, SecretStr) else str(v)
+        return None if not raw.strip() or "REPLACE_ME" in raw else v
 
     @property
     def api_key_set(self) -> set[str]:

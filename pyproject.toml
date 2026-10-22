@@ -59,6 +59,7 @@ dashboard = [
     "psycopg[binary]>=3.2",
     "altair>=5.4",
 ]
+loadtest = ["locust>=2.31"]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",

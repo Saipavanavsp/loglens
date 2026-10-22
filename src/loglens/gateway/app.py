@@ -15,13 +15,15 @@ Run: uvicorn loglens.gateway.app:app --timeout-graceful-shutdown 20
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
@@ -64,8 +66,6 @@ class Deps:
 
 async def build_deps(settings: Settings, cfg: GatewayConfig) -> Deps:
     """Wire real dependencies from environment + config."""
-    import os
-
     import redis.asyncio as aioredis
 
     from loglens.db import create_tables, make_engine, sessionmaker
@@ -306,7 +306,7 @@ def create_app(deps: Deps | None = None) -> FastAPI:
             res = await run_one(d, 0, user_msgs[-1], "unknown", key_id, request_id)
             if res.error:
                 raise HTTPException(429 if res.error == "budget_exceeded" else 503, res.error)
-            content = TriageResult.model_validate(res).model_dump_json(
+            content = res.model_dump_json(
                 include={"severity", "category", "root_cause", "suggested_action"}
             )
             meta = res.model_dump(
@@ -380,6 +380,17 @@ def create_app(deps: Deps | None = None) -> FastAPI:
             "dropped": d.request_logger.dropped,
         }
         return out
+
+    demo_key = os.environ.get("LOGLENS_DEMO_KEY", "")
+    if demo_key:
+        # Public demo page (Hugging Face Space). The demo key is deliberately public:
+        # it is rate limited like any key, and the demo runs with fallback disabled.
+        page = (Path(__file__).parent / "static" / "demo.html").read_text(encoding="utf-8")
+        page = page.replace("__DEMO_KEY__", demo_key)
+
+        @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+        async def demo():
+            return page
 
     @app.get("/healthz")
     async def healthz():
