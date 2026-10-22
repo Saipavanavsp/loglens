@@ -14,22 +14,22 @@ dependencies = [
     "pydantic-settings>=2.4",
     "httpx>=0.27",
     "python-dotenv>=1.0",
-    "orjson>=3.10",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
 # Dataset download, parsing and teacher labeling.
 data = [
-    "anthropic>=0.40",
-    "tenacity>=9.0",
+    "anthropic>=2.1,<3",
     "rapidfuzz>=3.9",
-    "tqdm>=4.66",
+    "numpy>=1.26",
+    "drain3>=0.9.11",
 ]
 # Gateway service.
 gateway = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "anthropic>=0.40",
+    "anthropic>=2.1,<3",
     "redis>=5.0",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
@@ -45,7 +45,7 @@ gateway = [
 embeddings = ["sentence-transformers>=3.0"]
 # Eval harness.
 eval = [
-    "anthropic>=0.40",
+    "anthropic>=2.1,<3",
     "scikit-learn>=1.5",
     "matplotlib>=3.9",
     "mlflow>=2.16",
@@ -87,6 +87,7 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "S", "N"]
 ignore = [
     "E501",  # black owns line length
+    "S311",  # random is used for sampling, not security
 ]
 
 [tool.ruff.lint.per-file-ignores]

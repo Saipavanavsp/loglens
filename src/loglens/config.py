@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     anthropic_api_key: SecretStr | None = Field(default=None, alias="ANTHROPIC_API_KEY")
-    teacher_model: str = Field(default="claude-haiku-5-5", alias="LOGLENS_TEACHER_MODEL")
-    fallback_model: str = Field(default="claude-haiku-5-5", alias="LOGLENS_FALLBACK_MODEL")
-    judge_model: str = Field(default="claude-sonnet-5-5", alias="LOGLENS_JUDGE_MODEL")
+    teacher_model: str = Field(default="claude-opus-5-5", alias="LOGLENS_TEACHER_MODEL")
+    fallback_model: str = Field(default="claude-opus-5-5", alias="LOGLENS_FALLBACK_MODEL")
+    judge_model: str = Field(default="claude-opus-5-5", alias="LOGLENS_JUDGE_MODEL")
 
     max_requests: int = Field(default=50, ge=0, alias="LOGLENS_MAX_REQUESTS")
     dry_run: bool = Field(default=True, alias="LOGLENS_DRY_RUN")
