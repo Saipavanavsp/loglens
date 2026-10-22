@@ -1,4 +1,4 @@
-from loglens.data.normalize import coarse_key, mask
+from loglens.data.normalize import mask
 from loglens.data.parse import parse_line
 
 
@@ -87,7 +87,3 @@ def test_mask_register_dumps():
 
 def test_mask_keeps_plain_words():
     assert "accepted" in mask("Accepted password for root")
-
-
-def test_coarse_key():
-    assert coarse_key("a b c d e f") == "a b c d"

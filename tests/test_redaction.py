@@ -3,6 +3,7 @@ import pytest
 from loglens.gateway.redaction import redact, restore
 
 PK = "PRIVATE " + "KEY"
+FAKE_AWS = "AKIA" + "ABCDEFGHIJKLMNOP"  # fake, split so secret scanners don't flag the repo
 
 
 def test_ipv4_numbered_and_consistent():
@@ -45,7 +46,7 @@ def test_email_and_hostname():
         ("api_key: abcd1234efgh", "abcd1234efgh"),
         ("Authorization: Bearer abc.def.ghijklmnop", "abc.def.ghijklmnop"),
         ("token=xyz;next", "xyz"),
-        ("key AKIAABCDEFGHIJKLMNOP used", "AKIAABCDEFGHIJKLMNOP"),
+        (f"key {FAKE_AWS} used", FAKE_AWS),
         ("gh token ghp_" + "a" * 36, "ghp_" + "a" * 36),
         ("jwt eyJhbGciOiJIUzI1.eyJzdWIiOiIxMjM0.SflKxwRJSMeKKF2QT4", "eyJhbGciOiJIUzI1"),
         # Built at runtime so the repo's private-key commit hook doesn't flag the fixture.

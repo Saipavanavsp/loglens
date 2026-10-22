@@ -27,8 +27,3 @@ def mask(message: str) -> str:
     for pattern, token in _PATTERNS:
         out = pattern.sub(token, out)
     return _WS.sub(" ", out).strip().lower()
-
-
-def coarse_key(masked: str, n_words: int = 4) -> str:
-    """First few masked words; used to spread a sample across event types."""
-    return " ".join(masked.split()[:n_words])

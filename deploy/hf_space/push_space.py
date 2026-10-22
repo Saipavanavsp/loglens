@@ -36,7 +36,16 @@ def main() -> None:
     p.add_argument("--space", required=True, help="e.g. your-name/loglens")
     p.add_argument("--gguf-repo", help="HF model repo holding loglens-q4_k_m.gguf")
     p.add_argument("--dry-run", action="store_true", help="assemble locally and list files only")
+    p.add_argument(
+        "--out", type=Path, help="assemble into this folder (e.g. to docker build it locally)"
+    )
     args = p.parse_args()
+
+    if args.out:
+        args.out.mkdir(parents=True, exist_ok=True)
+        assemble(args.out)
+        print(f"assembled in {args.out}; test with: docker build -t loglens-space {args.out}")
+        return
 
     with tempfile.TemporaryDirectory() as tmp:
         dest = Path(tmp)
