@@ -1,0 +1,54 @@
+# Gateway behaviour. Secrets and URLs come from environment variables, not this file.
+# `models` is written by `python -m loglens.llmops.registry promote`.
+
+prompt:
+  stable: v1
+  canary: v1
+
+models:
+  stable:
+    ollama_tag: qwen2.5:1.5b-instruct   # replace with the fine-tuned tag after training
+    registry_version: base
+  canary: null                         # e.g. {ollama_tag: loglens-qwen2.5-1.5b:v2, registry_version: "2"}
+
+canary:
+  percent: 0          # share of traffic (0-100) sent to the canary model/prompt
+
+routing:
+  confidence_method: logprobs       # logprobs | self_consistency | none
+  confidence_threshold: 0.70        # below this, fall back to Claude; tune on the val set
+  self_consistency_samples: 3
+  unknown_confidence_falls_back: false
+  fallback_enabled: true            # false = local only (e.g. public demo without a key)
+
+timeouts:
+  local_s: 20.0
+  fallback_s: 30.0
+
+retries:
+  attempts: 2
+  base_delay_s: 0.2
+  max_delay_s: 2.0
+
+circuit_breaker:
+  failure_threshold: 5
+  reset_after_s: 30
+
+cache:
+  exact_ttl_s: 86400          # 1 day
+  semantic_enabled: true
+  semantic_threshold: 0.95    # cosine similarity on masked text embeddings
+  semantic_ttl_s: 21600       # 6 hours; shorter than exact because the match is approximate
+  semantic_max_entries: 5000
+
+rate_limit:
+  capacity: 60                # burst size (tokens in the bucket)
+  refill_per_s: 1.0           # sustained requests per second per key
+
+budget:
+  daily_tokens: 2000000       # per API key, across providers
+  daily_cost_usd: 5.0         # per API key, external providers only
+
+batch:
+  max_items: 100
+  concurrency: 4
