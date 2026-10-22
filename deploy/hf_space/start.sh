@@ -15,10 +15,12 @@ if [ -n "${LOGLENS_GGUF_REPO:-}" ]; then
   GGUF=$(python -c "import os; from huggingface_hub import hf_hub_download; print(hf_hub_download(os.environ['LOGLENS_GGUF_REPO'], os.environ.get('LOGLENS_GGUF_FILE', 'loglens-q4_k_m.gguf')))")
   sed "s#^FROM .*#FROM ${GGUF}#" Modelfile > /tmp/Modelfile
   ollama create loglens-demo -f /tmp/Modelfile
+  export LOGLENS_DEMO_MODEL_LABEL="Qwen2.5-1.5B QLoRA fine-tuned (${LOGLENS_GGUF_REPO})"
 else
   echo "LOGLENS_GGUF_REPO not set: serving the BASE model (not fine-tuned)"
   ollama pull qwen2.5:1.5b-instruct
   ollama cp qwen2.5:1.5b-instruct loglens-demo
+  export LOGLENS_DEMO_MODEL_LABEL="Qwen2.5-1.5B-Instruct base (not fine-tuned yet)"
 fi
 
 # Public demo key: rate limited, fallback disabled, so it can't spend money.

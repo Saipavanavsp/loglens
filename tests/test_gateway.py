@@ -339,10 +339,12 @@ def test_demo_page_only_when_configured(monkeypatch):
     with TestClient(app) as c:
         assert c.get("/").status_code == 404
     monkeypatch.setenv("LOGLENS_DEMO_KEY", "public-demo-key")
+    monkeypatch.setenv("LOGLENS_DEMO_MODEL_LABEL", "base <not fine-tuned>")
     app, _ = build()
     with TestClient(app) as c:
         r = c.get("/")
     assert r.status_code == 200 and "public-demo-key" in r.text and "__DEMO_KEY__" not in r.text
+    assert "base &lt;not fine-tuned&gt;" in r.text  # label shown, HTML-escaped
 
 
 def test_shipped_gateway_configs_are_valid():

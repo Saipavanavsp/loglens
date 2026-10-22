@@ -14,6 +14,7 @@ Run: uvicorn loglens.gateway.app:app --timeout-graceful-shutdown 20
 """
 
 import asyncio
+import html
 import logging
 import os
 import time
@@ -387,6 +388,8 @@ def create_app(deps: Deps | None = None) -> FastAPI:
         # it is rate limited like any key, and the demo runs with fallback disabled.
         page = (Path(__file__).parent / "static" / "demo.html").read_text(encoding="utf-8")
         page = page.replace("__DEMO_KEY__", demo_key)
+        label = os.environ.get("LOGLENS_DEMO_MODEL_LABEL", "Qwen2.5-1.5B")
+        page = page.replace("__MODEL_LABEL__", html.escape(label))
 
         @app.get("/", response_class=HTMLResponse, include_in_schema=False)
         async def demo():
