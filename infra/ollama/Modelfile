@@ -1,0 +1,18 @@
+# Ollama model definition for the fine-tuned GGUF.
+#   ollama create loglens-qwen2.5-1.5b -f infra/ollama/Modelfile
+# The GGUF path is relative to this file; copy the exported file next to it.
+FROM ./loglens-q4_k_m.gguf
+
+# Qwen2.5 uses the ChatML format.
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+"""
+
+PARAMETER temperature 0
+PARAMETER num_ctx 1024
+PARAMETER num_predict 256
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"

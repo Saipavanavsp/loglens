@@ -23,8 +23,8 @@ class ParseResult:
         return self.label is not None
 
 
-def extract_json_object(text: str) -> str | None:
-    """Return the first balanced JSON object in text, or None."""
+def _balanced_objects(text: str):
+    """Yield every balanced {...} substring, left to right."""
     start = text.find("{")
     while start != -1:
         depth = 0
@@ -47,20 +47,29 @@ def extract_json_object(text: str) -> str | None:
             elif ch == "}":
                 depth -= 1
                 if depth == 0:
-                    return text[start : i + 1]
+                    yield text[start : i + 1]
+                    break
         start = text.find("{", start + 1)
+
+
+def extract_json_object(text: str) -> str | None:
+    """Return the first balanced {...} that parses as a JSON object, or None."""
+    for candidate in _balanced_objects(text):
+        try:
+            if isinstance(json.loads(candidate), dict):
+                return candidate
+        except json.JSONDecodeError:
+            continue
     return None
 
 
 def parse_label(text: str) -> ParseResult:
     """Parse and validate a model response. Never raises."""
-    candidate = extract_json_object(text or "")
+    text = text or ""
+    candidate = extract_json_object(text)
     if candidate is None:
-        return ParseResult(None, "no_json_object")
-    try:
-        data = json.loads(candidate)
-    except json.JSONDecodeError:
-        return ParseResult(None, "invalid_json")
+        return ParseResult(None, "invalid_json" if "{" in text else "no_json_object")
+    data = json.loads(candidate)
     if isinstance(data, dict):
         # Be lenient on case for enum fields; strict on everything else.
         for key in ("severity", "category"):

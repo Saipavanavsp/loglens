@@ -1,0 +1,9 @@
+# GPU training environment (Colab / Kaggle). Not installed locally.
+# Versions current as of October 2026; Colab already ships torch.
+transformers>=5.20,<6
+trl>=1.16,<2
+peft>=0.21,<1
+bitsandbytes>=0.50
+accelerate>=1.15
+datasets>=5.1
+huggingface_hub>=1.0

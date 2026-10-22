@@ -38,3 +38,6 @@ mlartifacts/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Downloaded training text for the learning exercise
+learning/mini_transformer/input.txt
