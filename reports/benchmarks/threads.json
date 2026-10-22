@@ -1,0 +1,8 @@
+{
+  "description": "llama.cpp generation speed for qwen2.5:1.5b-instruct Q4_K_M in Ollama 0.40.8 (Docker Desktop, Windows, 16 vCPU / 8 physical cores), 2026-10-22",
+  "runs": [
+    {"num_thread": 16, "gen_tokens_per_s": 0.5, "note": "Ollama default; 96 tokens in 186 s total (prompt included), so approximate"},
+    {"num_thread": 8, "gen_tokens_per_s": 32.3, "note": "40-token generation, eval_duration only"},
+    {"num_thread": 4, "gen_tokens_per_s": 29.4, "note": "40-token generation, eval_duration only"}
+  ]
+}

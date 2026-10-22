@@ -75,9 +75,13 @@ answers, which is why the parser finds the JSON object first. And at the default
 traffic would fall back to Claude. Fine-tuning is meant to bring that number down; the eval above
 measures whether it did.
 
+![Base model confidence distribution](docs/images/base_confidence.png)
+
 Engineering finding from the same setup: llama.cpp with one thread per vCPU (16 on an 8-core
 machine) generated ~0.5 tokens/s; 8 threads gave ~32 tokens/s. The thread count is now an explicit
 setting (`LOGLENS_OLLAMA_THREADS`).
+
+![llama.cpp thread benchmark](docs/images/thread_benchmark.png)
 
 ### Load test
 
@@ -87,6 +91,8 @@ Full Compose stack on one laptop, **base** model on CPU, no Claude fallback, 8 L
 | Requests | Throughput | Cache hit rate | p50 | p50 exact / semantic hit | p99 | Errors |
 |---|---|---|---|---|---|---|
 | 861 | 2.87 req/s | 89.1% | 13 ms | 7 ms / 72 ms | 20 s | 1.05% (503) |
+
+![Load test latency by task](docs/images/loadtest_latency.png)
 
 The cache absorbs most traffic. Cache misses queue behind a single CPU model, and that queue
 produces the whole latency tail and every error. A first run that retried local timeouts had a
@@ -145,7 +151,34 @@ curl.exe -s http://127.0.0.1:8000/v1/stats -H "Authorization: Bearer $env:LOGLEN
 
 ## Screenshots
 
-[TO BE ADDED: dashboard, Jaeger trace of a fallback request, eval report]
+All captured from the running stack on 2026-10-22 with `scripts/capture_screenshots.py`. The model in
+every screenshot is the **base** Qwen2.5-1.5B (fine-tuning not run yet), so some answers are wrong.
+For example, it calls an out-of-memory kill an "attack in progress". That's the gap fine-tuning is
+for.
+
+**Demo page.** Three log lines triaged by the local model on CPU. The second is below the confidence
+threshold and is flagged, because the demo runs without the paid fallback.
+
+![Demo page](docs/images/demo_page.png)
+
+**Operations dashboard** (Streamlit, reading the PostgreSQL request log after the load tests).
+
+![Dashboard](docs/images/dashboard.png)
+
+**Jaeger trace** of one request: cache lookup (miss), local model call (~5 s on CPU), cache store.
+
+![Jaeger trace](docs/images/jaeger_trace.png)
+
+**MLflow.** Benchmark and load-test runs logged with `scripts/log_benchmarks_to_mlflow.py`.
+
+![MLflow runs](docs/images/mlflow_runs.png)
+
+**API** (OpenAPI docs served by the gateway) and **CI** on GitHub Actions. Run #2 was cancelled
+automatically when the next push arrived.
+
+![API docs](docs/images/api_docs.png)
+
+![GitHub Actions](docs/images/github_ci.png)
 
 ## Limitations
 

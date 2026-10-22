@@ -59,6 +59,8 @@ dashboard = [
     "altair>=5.4",
 ]
 loadtest = ["locust>=2.31"]
+# README figures and screenshots (scripts/make_figures.py, scripts/capture_screenshots.py).
+docs = ["playwright>=1.48", "matplotlib>=3.9"]
 dev = [
     "pytest>=8.3",
     "pytest-cov>=5.0",

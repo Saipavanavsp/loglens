@@ -27,8 +27,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install "ruff>=0.17" "black>=26.10"
-      - run: ruff check src tests dashboard training learning
-      - run: black --check src tests dashboard training learning
+      - run: ruff check src tests dashboard training learning scripts
+      - run: black --check src tests dashboard training learning scripts
 
   test:
     runs-on: ubuntu-latest
