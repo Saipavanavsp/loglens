@@ -1,5 +1,7 @@
 # LogLens
 
+[![ci](https://github.com/Saipavanavsp/loglens/actions/workflows/ci.yml/badge.svg)](https://github.com/Saipavanavsp/loglens/actions/workflows/ci.yml)
+
 LogLens triages system and network logs. For each log line it returns a severity, a category, a
 short root-cause explanation and a suggested action, always as schema-valid JSON. A small
 fine-tuned model handles most traffic on a CPU; Claude handles only the lines the small model isn't
