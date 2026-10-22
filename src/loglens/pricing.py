@@ -13,8 +13,18 @@ PRICES_PER_MTOK: dict[str, tuple[float, float]] = {
 
 
 def price_for(model: str) -> tuple[float, float]:
-    """(input, output) price per million tokens. Unknown models return (0, 0)."""
+    """(input, output) price per million tokens. Unknown models return (0, 0).
+
+    Use `budget_price_for` when checking spend limits.
+    """
     return PRICES_PER_MTOK.get(model, (0.0, 0.0))
+
+
+def budget_price_for(model: str) -> tuple[float, float]:
+    """Price for budget checks: unknown models are assumed to cost the most we know of."""
+    if model in PRICES_PER_MTOK:
+        return PRICES_PER_MTOK[model]
+    return max(PRICES_PER_MTOK.values(), key=lambda p: p[1])
 
 
 def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
     local_model: str = Field(default="loglens-qwen2.5-1.5b", alias="LOGLENS_LOCAL_MODEL")
+    # CPU threads for the local model; use the physical core count (see providers/ollama.py).
+    ollama_num_thread: int | None = Field(default=8, alias="LOGLENS_OLLAMA_THREADS")
 
     api_keys: str = Field(default="", alias="LOGLENS_API_KEYS")
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")

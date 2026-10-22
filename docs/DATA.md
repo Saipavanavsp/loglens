@@ -25,8 +25,9 @@ download -> parse -> sample -> label (Claude) -> select golden -> human review -
    message. Lines that don't match are counted and skipped, mostly wrapped Apache continuation lines.
    Each message gets a masked key (IPs, numbers, hex, paths and block ids replaced), and at most 3
    lines are kept per key.
-2. **templates** (`loglens.data.templates`). Drain (drain3) groups masked messages into event
-   templates such as `invalid user <*> from <ip>`.
+2. **templates** (`loglens.data.templates`). A compact re-implementation of the Drain log parser
+   groups masked messages into event templates such as `invalid user <*> from <ip>`. The drain3
+   package isn't used because its exact `cachetools` pin conflicts with MLflow.
 3. **sample** (`loglens.data.sample`). One line per masked key, at most 5 per template, round-robin
    across templates and sources. The ordering is deterministic, so a small pilot sample is a prefix
    of the full sample and its labels are reused from the cache.

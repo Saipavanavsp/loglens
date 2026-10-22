@@ -46,6 +46,17 @@ def test_alert_rows_come_first_within_template():
     assert build_sample(rows, 1)[0]["id"] == "2"
 
 
+def test_drain_merges_and_keeps_lengths_apart():
+    from loglens.data.templates import Drain
+
+    d = Drain()
+    a = d.add("session opened for user alice")
+    b = d.add("session opened for user bob")
+    c = d.add("session opened for user bob by uid")
+    assert a is b and a.template == "session opened for user <*>"
+    assert c is not a
+
+
 def test_drain_groups_usernames():
     keys = {
         "openssh": [

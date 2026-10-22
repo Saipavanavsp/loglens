@@ -1,0 +1,5 @@
+{
+  "valid_json_rate": 0.95,
+  "severity_acc": 0.70,
+  "category_acc": 0.65
+}
